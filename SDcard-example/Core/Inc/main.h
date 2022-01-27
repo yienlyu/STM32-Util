@@ -31,6 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -41,35 +42,18 @@ extern "C" {
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 
-#define LEDn 			   2
-
-#define LED1_PIN           GPIO_PIN_4
-
-#define LED2_PIN           GPIO_PIN_13
-#define LED2_GPIO_PORT     GPIOB
-/* USER CODE END Private defines */
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-typedef enum
-{
-  LED1 = 0,
-  LED2 = 1,
-  LED_ORANGE = LED1,
-  LED_GREEN  = LED2
-}
-Led_TypeDef;
 
-//const uint16_t  LED_PIN[LEDn] = {LED1_PIN, LED2_PIN};
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-void BSP_LED_On(Led_TypeDef Led);
-void BSP_LED_Off(Led_TypeDef Led);
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

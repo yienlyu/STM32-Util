@@ -22,6 +22,8 @@ OBJCOPY_BIN :=
 SUBDIRS := \
 Core/Src \
 Core/Startup \
+Drivers/BSP/Components \
+Drivers/BSP/STM32L496G-Discovery \
 Drivers/STM32L4xx_HAL_Driver/Src \
 FATFS/App \
 FATFS/Target \
