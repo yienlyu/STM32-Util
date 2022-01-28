@@ -109,6 +109,15 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
+  // init MFX
+  uint8_t ret_mfx = IO_ERROR;
+
+  ret_mfx = BSP_IO_Init();
+
+
+  BSP_LED_Init(LED2);
+  BSP_LED_Init(LED1);
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -118,21 +127,11 @@ int main(void)
   MX_I2C2_Init();
   MX_FATFS_Init();
   MX_FMC_Init();
-
   /* USER CODE BEGIN 2 */
-  BSP_LED_Init(LED2);
-  BSP_LED_Init(LED1);
 
-  // init MFX
-  uint8_t ret_mfx = IO_ERROR;
-
-  ret_mfx = BSP_IO_Init();
-  BSP_LED_Off(LED2);
-
-  if (ret_mfx == IO_OK || ret_mfx == IO_ALREADY_INITIALIZED) {
-	  BSP_LED_On(LED2);
+  if (ret_mfx == IO_OK) {
+	  BSP_LED_On(LED1);
   }
-
 
   /* 1- Link the micro SD disk I/O driver */
   if(FATFS_LinkDriver(&SD_Driver, SDPath) == 0)
@@ -151,6 +150,8 @@ int main(void)
     Error_Handler();
     while(1) {};
   }
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -161,8 +162,8 @@ int main(void)
 	{
 	case APPLICATION_RUNNING:
 	  BSP_LED_Off(LED1);
-//	  SD_Initialize();
-//	  FS_FileOperations();
+	  SD_Initialize();
+	  FS_FileOperations();
 	  Appli_state = APPLICATION_IDLE;
 	  break;
 
@@ -329,10 +330,10 @@ static void MX_DMA_Init(void)
   HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
   /* DMA2_Channel4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel4_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Channel4_IRQn, 7, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel4_IRQn);
   /* DMA2_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 7, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
 
 }

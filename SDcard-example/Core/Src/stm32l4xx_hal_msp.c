@@ -301,7 +301,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
     __HAL_LINKDMA(hsd,hdmatx,hdma_sdmmc1_tx);
 
     /* SDMMC1 interrupt Init */
-    HAL_NVIC_SetPriority(SDMMC1_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(SDMMC1_IRQn, 4, 0);
     HAL_NVIC_EnableIRQ(SDMMC1_IRQn);
   /* USER CODE BEGIN SDMMC1_MspInit 1 */
 
