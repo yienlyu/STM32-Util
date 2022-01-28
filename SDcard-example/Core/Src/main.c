@@ -37,6 +37,9 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+FATFS SDFatFs;  /* File system object for SD card logical drive */
+FIL MyFile;     /* File object */
+char SDPath[4]; /* SD card logical drive path */
 
 /* USER CODE END PM */
 
@@ -69,8 +72,8 @@ static void MX_SDMMC1_SD_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_FMC_Init(void);
 /* USER CODE BEGIN PFP */
-//static void FS_FileOperations(void);
-//static void SD_Initialize(void);
+static void FS_FileOperations(void);
+static void SD_Initialize(void);
 
 static uint8_t isInitialized = 0;
 static uint8_t isCreated = 0;
@@ -99,18 +102,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  BSP_LED_Init(LED2);
-  BSP_LED_Init(LED1);
-
-  // init MFX
-  uint8_t ret_mfx = IO_ERROR;
-
-  ret_mfx = BSP_IO_Init();
-  BSP_LED_Off(LED2);
-
-  if (ret_mfx == IO_OK || ret_mfx == IO_ALREADY_INITIALIZED) {
-	  BSP_LED_On(LED2);
-  }
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -129,6 +120,18 @@ int main(void)
   MX_FMC_Init();
 
   /* USER CODE BEGIN 2 */
+  BSP_LED_Init(LED2);
+  BSP_LED_Init(LED1);
+
+  // init MFX
+  uint8_t ret_mfx = IO_ERROR;
+
+  ret_mfx = BSP_IO_Init();
+  BSP_LED_Off(LED2);
+
+  if (ret_mfx == IO_OK || ret_mfx == IO_ALREADY_INITIALIZED) {
+	  BSP_LED_On(LED2);
+  }
 
 
   /* 1- Link the micro SD disk I/O driver */
@@ -136,7 +139,7 @@ int main(void)
   {
     /*##-2- Init the SD Card #################################################*/
 
-//    SD_Initialize();
+    SD_Initialize();
 
     if(BSP_SD_IsDetected())
     {
@@ -415,7 +418,86 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+static void FS_FileOperations(void)
+{
+  FRESULT res; /* FatFs function common result code */
+  uint32_t byteswritten, bytesread; /* File write/read counts */
+  uint8_t wtext[] = "stm32l496g_discovery : This is STM32 working with FatFs and uSD diskio driver"; /* File write buffer */
+  uint8_t rtext[100]; /* File read buffer */
 
+  /* Register the file system object to the FatFs module */
+  if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) == FR_OK)
+  {
+#if FATFS_MKFS_ALLOWED
+    if (isCreated == 0)
+    {
+      res = f_mkfs(SDPath, FM_ANY, 0, workBuffer, sizeof(workBuffer));
+
+      if (res != FR_OK)
+      {
+        Error_Handler();
+        while(1);
+      }
+    }
+    isCreated = 1;
+#endif
+    /* Create and Open a new text file object with write access */
+    if(f_open(&MyFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) == FR_OK)
+    {
+      /* Write data to the text file */
+      res = f_write(&MyFile, wtext, sizeof(wtext), (void *)&byteswritten);
+
+      if((byteswritten > 0) && (res == FR_OK))
+      {
+        /* Close the open text file */
+        f_close(&MyFile);
+
+        /* Open the text file object with read access */
+        if(f_open(&MyFile, "STM32.TXT", FA_READ) == FR_OK)
+        {
+          /* Read data from the text file */
+          res = f_read(&MyFile, rtext, sizeof(rtext), (void *)&bytesread);
+
+          if((bytesread > 0) && (res == FR_OK))
+          {
+            /* Close the open text file */
+            f_close(&MyFile);
+
+            /* Compare read data with the expected data */
+            if((bytesread == byteswritten))
+            {
+              /* Success of the demo: no error occurrence */
+              BSP_LED_On(LED2);
+              return;
+            }
+          }
+        }
+      }
+    }
+  }
+  /* Error */
+  Error_Handler();
+}
+
+static void SD_Initialize(void)
+{
+  if (isInitialized == 0)
+  {
+    if (BSP_SD_Init() == MSD_OK)
+    {
+      BSP_SD_ITConfig();
+      isInitialized = 1;
+    }
+    else
+    {
+      BSP_LED_On(LED1);
+      /* wait until the uSD is plugged */
+      while (BSP_SD_IsDetected() != SD_PRESENT)
+      {}
+      BSP_LED_Off(LED1);
+    }
+  }
+}
 /* USER CODE END 4 */
 
 /**
