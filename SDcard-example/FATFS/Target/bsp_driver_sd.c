@@ -234,30 +234,30 @@ __weak void BSP_SD_GetCardInfo(BSP_SD_CardInfo *CardInfo)
   * @param hsd: SD handle
   * @retval None
   */
-void HAL_SD_AbortCallback(SD_HandleTypeDef *hsd)
-{
-  BSP_SD_AbortCallback();
-}
+//void HAL_SD_AbortCallback(SD_HandleTypeDef *hsd)
+//{
+//  BSP_SD_AbortCallback();
+//}
 
 /**
   * @brief Tx Transfer completed callback
   * @param hsd: SD handle
   * @retval None
   */
-void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
-{
-  BSP_SD_WriteCpltCallback();
-}
+//void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
+//{
+//  BSP_SD_WriteCpltCallback();
+//}
 
 /**
   * @brief Rx Transfer completed callback
   * @param hsd: SD handle
   * @retval None
   */
-void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
-{
-  BSP_SD_ReadCpltCallback();
-}
+//void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
+//{
+//  BSP_SD_ReadCpltCallback();
+//}
 
 /* USER CODE BEGIN CallBacksSection_C */
 /**

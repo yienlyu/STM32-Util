@@ -49,11 +49,9 @@ SD_HandleTypeDef hsd1;
 DMA_HandleTypeDef hdma_sdmmc1_rx;
 DMA_HandleTypeDef hdma_sdmmc1_tx;
 
-/* USER CODE BEGIN PV */
-FATFS SDFatFs;  /* File system object for SD card logical drive */
-FIL MyFile;     /* File object */
-char SDPath[4]; /* SD card logical drive path */
+SRAM_HandleTypeDef hsram1;
 
+/* USER CODE BEGIN PV */
 typedef enum {
   APPLICATION_IDLE = 0,
   APPLICATION_RUNNING,
@@ -69,7 +67,7 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_SDMMC1_SD_Init(void);
 static void MX_I2C2_Init(void);
-
+static void MX_FMC_Init(void);
 /* USER CODE BEGIN PFP */
 //static void FS_FileOperations(void);
 //static void SD_Initialize(void);
@@ -101,8 +99,18 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  BSP_LED_Init(LED2);
+  BSP_LED_Init(LED1);
+
   // init MFX
-  BSP_IO_Init();
+  uint8_t ret_mfx = IO_ERROR;
+
+  ret_mfx = BSP_IO_Init();
+  BSP_LED_Off(LED2);
+
+  if (ret_mfx == IO_OK || ret_mfx == IO_ALREADY_INITIALIZED) {
+	  BSP_LED_On(LED2);
+  }
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -118,14 +126,59 @@ int main(void)
   MX_SDMMC1_SD_Init();
   MX_I2C2_Init();
   MX_FATFS_Init();
+  MX_FMC_Init();
+
   /* USER CODE BEGIN 2 */
 
+
+  /* 1- Link the micro SD disk I/O driver */
+  if(FATFS_LinkDriver(&SD_Driver, SDPath) == 0)
+  {
+    /*##-2- Init the SD Card #################################################*/
+
+//    SD_Initialize();
+
+    if(BSP_SD_IsDetected())
+    {
+      Appli_state = APPLICATION_RUNNING;
+    }
+  }
+  else
+  {
+    Error_Handler();
+    while(1) {};
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	switch(Appli_state)
+	{
+	case APPLICATION_RUNNING:
+	  BSP_LED_Off(LED1);
+//	  SD_Initialize();
+//	  FS_FileOperations();
+	  Appli_state = APPLICATION_IDLE;
+	  break;
+
+	case APPLICATION_IDLE:
+	  break;
+
+	case APPLICATION_SD_UNPLUGGED:
+	  if (isInitialized == 1)
+	  {
+		Error_Handler();
+		isInitialized = 0;
+	  }
+
+	  Appli_state = APPLICATION_IDLE;
+	  break;
+
+	default:
+	  break;
+	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -281,6 +334,60 @@ static void MX_DMA_Init(void)
 
 }
 
+/* FMC initialization function */
+static void MX_FMC_Init(void)
+{
+
+  /* USER CODE BEGIN FMC_Init 0 */
+
+  /* USER CODE END FMC_Init 0 */
+
+  FMC_NORSRAM_TimingTypeDef Timing = {0};
+
+  /* USER CODE BEGIN FMC_Init 1 */
+
+  /* USER CODE END FMC_Init 1 */
+
+  /** Perform the SRAM1 memory initialization sequence
+  */
+  hsram1.Instance = FMC_NORSRAM_DEVICE;
+  hsram1.Extended = FMC_NORSRAM_EXTENDED_DEVICE;
+  /* hsram1.Init */
+  hsram1.Init.NSBank = FMC_NORSRAM_BANK1;
+  hsram1.Init.DataAddressMux = FMC_DATA_ADDRESS_MUX_DISABLE;
+  hsram1.Init.MemoryType = FMC_MEMORY_TYPE_SRAM;
+  hsram1.Init.MemoryDataWidth = FMC_NORSRAM_MEM_BUS_WIDTH_8;
+  hsram1.Init.BurstAccessMode = FMC_BURST_ACCESS_MODE_DISABLE;
+  hsram1.Init.WaitSignalPolarity = FMC_WAIT_SIGNAL_POLARITY_LOW;
+  hsram1.Init.WaitSignalActive = FMC_WAIT_TIMING_BEFORE_WS;
+  hsram1.Init.WriteOperation = FMC_WRITE_OPERATION_DISABLE;
+  hsram1.Init.WaitSignal = FMC_WAIT_SIGNAL_DISABLE;
+  hsram1.Init.ExtendedMode = FMC_EXTENDED_MODE_DISABLE;
+  hsram1.Init.AsynchronousWait = FMC_ASYNCHRONOUS_WAIT_ENABLE;
+  hsram1.Init.WriteBurst = FMC_WRITE_BURST_DISABLE;
+  hsram1.Init.ContinuousClock = FMC_CONTINUOUS_CLOCK_SYNC_ONLY;
+  hsram1.Init.WriteFifo = FMC_WRITE_FIFO_ENABLE;
+  hsram1.Init.PageSize = FMC_PAGE_SIZE_NONE;
+  /* Timing */
+  Timing.AddressSetupTime = 15;
+  Timing.AddressHoldTime = 15;
+  Timing.DataSetupTime = 255;
+  Timing.BusTurnAroundDuration = 15;
+  Timing.CLKDivision = 16;
+  Timing.DataLatency = 17;
+  Timing.AccessMode = FMC_ACCESS_MODE_A;
+  /* ExtTiming */
+
+  if (HAL_SRAM_Init(&hsram1, &Timing, NULL) != HAL_OK)
+  {
+    Error_Handler( );
+  }
+
+  /* USER CODE BEGIN FMC_Init 2 */
+
+  /* USER CODE END FMC_Init 2 */
+}
+
 /**
   * @brief GPIO Initialization Function
   * @param None
@@ -294,6 +401,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 

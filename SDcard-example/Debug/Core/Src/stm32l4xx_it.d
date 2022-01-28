@@ -27,6 +27,15 @@ Core/Src/stm32l4xx_it.o: ../Core/Src/stm32l4xx_it.c ../Core/Inc/main.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr_ex.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_sd.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_ll_sdmmc.h \
+ ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_sram.h \
+ ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_ll_fmc.h \
+ /Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/stm32l496g_discovery.h \
+ /Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/stm32l496g_discovery_io.h \
+ /Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/stm32l496g_discovery.h \
+ /Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/../Components/mfxstm32l152/mfxstm32l152.h \
+ /Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/../Components/mfxstm32l152/../Common/ts.h \
+ /Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/../Components/mfxstm32l152/../Common/io.h \
+ /Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/../Components/mfxstm32l152/../Common/idd.h \
  ../Core/Inc/stm32l4xx_it.h
 
 ../Core/Inc/main.h:
@@ -86,5 +95,23 @@ Core/Src/stm32l4xx_it.o: ../Core/Src/stm32l4xx_it.c ../Core/Inc/main.h \
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_sd.h:
 
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_ll_sdmmc.h:
+
+../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_sram.h:
+
+../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_ll_fmc.h:
+
+/Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/stm32l496g_discovery.h:
+
+/Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/stm32l496g_discovery_io.h:
+
+/Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/stm32l496g_discovery.h:
+
+/Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/../Components/mfxstm32l152/mfxstm32l152.h:
+
+/Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/../Components/mfxstm32l152/../Common/ts.h:
+
+/Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/../Components/mfxstm32l152/../Common/io.h:
+
+/Users/natalielyu/Downloads/STM32Cube_FW_L4_V1.17.0/Drivers/BSP/STM32L496G-Discovery/../Components/mfxstm32l152/../Common/idd.h:
 
 ../Core/Inc/stm32l4xx_it.h:
