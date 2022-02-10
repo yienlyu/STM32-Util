@@ -109,15 +109,6 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
-  // init MFX
-  uint8_t ret_mfx = IO_ERROR;
-
-  ret_mfx = BSP_IO_Init();
-
-
-  BSP_LED_Init(LED2);
-  BSP_LED_Init(LED1);
-
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -128,15 +119,28 @@ int main(void)
   MX_FATFS_Init();
   MX_FMC_Init();
   /* USER CODE BEGIN 2 */
+  // init MFX
+  uint8_t ret_mfx = IO_ERROR;
+
+  // init after gpio init
+  ret_mfx = BSP_IO_Init();
+
+  BSP_LED_Init(LED2);
+  BSP_LED_Init(LED1);
+
 
   if (ret_mfx == IO_OK) {
 	  BSP_LED_On(LED1);
+	  BSP_LED_On(LED2);
   }
 
   /* 1- Link the micro SD disk I/O driver */
-  if(FATFS_LinkDriver(&SD_Driver, SDPath) == 0)
-  {
+  // FATFS_LinkDriver(&SD_Driver, SDPath) has already called in MX_FATFS_Init()
+//  if(FATFS_LinkDriver(&SD_Driver, SDPath) == 0)
+//  {
     /*##-2- Init the SD Card #################################################*/
+  	BSP_LED_Off(LED1);
+    BSP_LED_Off(LED2);
 
     SD_Initialize();
 
@@ -144,12 +148,12 @@ int main(void)
     {
       Appli_state = APPLICATION_RUNNING;
     }
-  }
-  else
-  {
-    Error_Handler();
-    while(1) {};
-  }
+//  }
+//  else
+//  {
+//    Error_Handler();
+//    while(1) {};
+//  }
 
 
   /* USER CODE END 2 */
@@ -413,7 +417,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PB13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }

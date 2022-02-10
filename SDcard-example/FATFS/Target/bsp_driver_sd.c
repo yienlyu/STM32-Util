@@ -228,36 +228,61 @@ __weak void BSP_SD_GetCardInfo(BSP_SD_CardInfo *CardInfo)
 
 /* USER CODE BEGIN BeforeCallBacksSection */
 /* can be used to modify previous code / undefine following code / add code */
+//void HAL_SD_AbortCallback(SD_HandleTypeDef *hsd)
+//{
+//  BSP_SD_AbortCallback();
+//}
+//
+///**
+//  * @brief Tx Transfer completed callback
+//  * @param hsd: SD handle
+//  * @retval None
+//  */
+//void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
+//{
+//  BSP_SD_WriteCpltCallback();
+//}
+//
+///**
+//  * @brief Rx Transfer completed callback
+//  * @param hsd: SD handle
+//  * @retval None
+//  */
+//void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
+//{
+//  BSP_SD_ReadCpltCallback();
+//}
+
 /* USER CODE END BeforeCallBacksSection */
 /**
   * @brief SD Abort callbacks
   * @param hsd: SD handle
   * @retval None
   */
-//void HAL_SD_AbortCallback(SD_HandleTypeDef *hsd)
-//{
-//  BSP_SD_AbortCallback();
-//}
+__weak void HAL_SD_AbortCallback(SD_HandleTypeDef *hsd)
+{
+  BSP_SD_AbortCallback();
+}
 
 /**
   * @brief Tx Transfer completed callback
   * @param hsd: SD handle
   * @retval None
   */
-//void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
-//{
-//  BSP_SD_WriteCpltCallback();
-//}
+__weak void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
+{
+  BSP_SD_WriteCpltCallback();
+}
 
 /**
   * @brief Rx Transfer completed callback
   * @param hsd: SD handle
   * @retval None
   */
-//void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
-//{
-//  BSP_SD_ReadCpltCallback();
-//}
+__weak void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
+{
+  BSP_SD_ReadCpltCallback();
+}
 
 /* USER CODE BEGIN CallBacksSection_C */
 /**
