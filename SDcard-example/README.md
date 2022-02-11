@@ -214,3 +214,8 @@ static void SD_Initialize(void)
 - You should do `BSP_IO_Init()` after `MX_I2C2_Init()`, since MFX has to communicate through I2C.
 - You don't have to do `FATFS_LinkDriver(&SD_Driver, SDPath)` again, since it has already been done in `MX_FATFS_Init()`.
 - No need to turn on "Use dma template" in FATFS Configurations.
+- Be sure to comment out `FATFS/Target/bsp_driver_sd.c` functions:
+	- `void HAL_SD_AbortCallback(SD_HandleTypeDef *hsd)`
+	- `void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)`
+	- `void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)`
+They are double defined in `stm32l496g_discovery_sd.c`
