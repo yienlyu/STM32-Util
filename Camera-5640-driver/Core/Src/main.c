@@ -60,7 +60,7 @@ uint8_t __IO cameraState = CAMERA_STATE_RESET;
 uint32_t CameraResolution[4] = {CAMERA_R160x120, CAMERA_R320x240, CAMERA_R480x272, CAMERA_R640x480};
 uint32_t CameraResX[4] = {160, 320, 480, 640};
 uint32_t CameraResY[4] = {120, 240, 272, 480};
-uint32_t CameraResIndex = 3;
+uint32_t CameraResIndex = 1;
 
 //extern LTDC_HandleTypeDef hlcd_ltdc;
 //extern DSI_HandleTypeDef hlcd_dsi;
@@ -180,8 +180,9 @@ int main(void)
   /* Configure the system clock to 80 MHz */
   SystemClock_Config();
 
+  IO_Init();
 
-  MX_GPIO_Init();
+//  MX_GPIO_Init();
   MX_DMA_Init();
   MX_SDMMC1_SD_Init();
   MX_I2C2_Init();
@@ -196,7 +197,7 @@ int main(void)
 
   /*##-2- LCD configuration  #################################################*/
   /* I/O initialization, required before LCD initialization */
-  IO_Init();
+
   /* LCD initialization */
   BSP_LCD_Init();
 
@@ -233,7 +234,7 @@ int main(void)
   }
 
   /* Start the Camera Capture */
-  if(BSP_CAMERA_Start(0,(uint8_t *)CAMERA_FRAME_BUFFER,CAMERA_MODE_SNAPSHOT)!= BSP_ERROR_NONE)
+  if(BSP_CAMERA_Start(0,(uint8_t *)CAMERA_FRAME_BUFFER,CAMERA_MODE_CONTINUOUS)!= BSP_ERROR_NONE)
   {
     Error_Handler();
   }
@@ -502,6 +503,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(DCMI_PWR_EN_GPIO_Port, &GPIO_InitStruct);
+
+//  HAL_GPIO_WritePin(GPIOH, GPIO_PIN_6, GPIO_PIN_SET);
+//
+//  HAL_Delay(100);     /* POWER_DOWN de-asserted during 100 ms */
+//
+//  /* Assert the camera POWER_DOWN pin (active high) */
+//  HAL_GPIO_WritePin(GPIOH, GPIO_PIN_6, GPIO_PIN_RESET);
+//  HAL_Delay(20);
 
 }
 

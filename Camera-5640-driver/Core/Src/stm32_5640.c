@@ -1181,15 +1181,15 @@ int32_t BSP_CAMERA_HwReset(uint32_t Instance)
     gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
     gpio_init_structure.Pull      = GPIO_NOPULL;
     gpio_init_structure.Speed     = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(GPIOA, &gpio_init_structure);
+    HAL_GPIO_Init(GPIOH, &gpio_init_structure);
 
     /* De-assert the camera POWER_DOWN pin (active high) */
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOH, GPIO_PIN_6, GPIO_PIN_SET);
 
     HAL_Delay(100);     /* POWER_DOWN de-asserted during 100 ms */
 
     /* Assert the camera POWER_DOWN pin (active high) */
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOH, GPIO_PIN_6, GPIO_PIN_RESET);
     HAL_Delay(20);
   }
 
@@ -1326,8 +1326,8 @@ static int32_t GetSize(uint32_t Resolution, uint32_t PixelFormat)
     size =  ((uint32_t)(480*272)*pf_div)/4U;
     break;
   case CAMERA_R640x480:
-//    size =  ((uint32_t)(640*480)*pf_div)/4U;
-	  size =  ((uint32_t)(240*240)*pf_div)/4U;
+    size =  ((uint32_t)(640*480)*pf_div)/4U;
+//	  size =  ((uint32_t)(240*240)*pf_div)/4U;
     break;
   case CAMERA_R800x480:
     size =  ((uint32_t)(800*480)*pf_div)/4U;
@@ -1381,7 +1381,8 @@ static void DCMI_MspInit(DCMI_HandleTypeDef *hdcmi)
   gpio_init_structure.Alternate = GPIO_AF10_DCMI;
   HAL_GPIO_Init(GPIOE, &gpio_init_structure);
 
-  gpio_init_structure.Pin       = GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_14;
+  gpio_init_structure.Pin       = GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_8 | GPIO_PIN_9 \
+		  	  	  	  	  	  	| GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_14;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Pull      = GPIO_PULLUP;
   gpio_init_structure.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;

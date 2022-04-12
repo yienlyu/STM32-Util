@@ -41,7 +41,7 @@ void Error_Handler(void);
 #define USART2_TX_GPIO_Port GPIOA
 
 #define DCMI_PWR_EN_Pin GPIO_PIN_6
-#define DCMI_PWR_EN_GPIO_Port GPIOA
+#define DCMI_PWR_EN_GPIO_Port GPIOH
 
 #define LCD_FRAME_BUFFER                  0xD0000000 /* LCD Frame buffer of size 800x480 in ARGB8888 */
 
