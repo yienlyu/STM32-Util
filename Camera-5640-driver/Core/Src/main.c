@@ -60,7 +60,7 @@ uint8_t __IO cameraState = CAMERA_STATE_RESET;
 uint32_t CameraResolution[4] = {CAMERA_R160x120, CAMERA_R320x240, CAMERA_R480x272, CAMERA_R640x480};
 uint32_t CameraResX[4] = {160, 320, 480, 640};
 uint32_t CameraResY[4] = {120, 240, 272, 480};
-uint32_t CameraResIndex = 0;
+uint32_t CameraResIndex = 3;
 
 //extern LTDC_HandleTypeDef hlcd_ltdc;
 //extern DSI_HandleTypeDef hlcd_dsi;
@@ -233,7 +233,7 @@ int main(void)
   }
 
   /* Start the Camera Capture */
-  if(BSP_CAMERA_Start(0,(uint8_t *)CAMERA_FRAME_BUFFER,CAMERA_MODE_CONTINUOUS)!= BSP_ERROR_NONE)
+  if(BSP_CAMERA_Start(0,(uint8_t *)CAMERA_FRAME_BUFFER,CAMERA_MODE_SNAPSHOT)!= BSP_ERROR_NONE)
   {
     Error_Handler();
   }

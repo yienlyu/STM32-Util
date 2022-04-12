@@ -1326,7 +1326,8 @@ static int32_t GetSize(uint32_t Resolution, uint32_t PixelFormat)
     size =  ((uint32_t)(480*272)*pf_div)/4U;
     break;
   case CAMERA_R640x480:
-    size =  ((uint32_t)(640*480)*pf_div)/4U;
+//    size =  ((uint32_t)(640*480)*pf_div)/4U;
+	  size =  ((uint32_t)(240*240)*pf_div)/4U;
     break;
   case CAMERA_R800x480:
     size =  ((uint32_t)(800*480)*pf_div)/4U;
