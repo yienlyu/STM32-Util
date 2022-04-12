@@ -60,7 +60,7 @@ uint8_t __IO cameraState = CAMERA_STATE_RESET;
 uint32_t CameraResolution[4] = {CAMERA_R160x120, CAMERA_R320x240, CAMERA_R480x272, CAMERA_R640x480};
 uint32_t CameraResX[4] = {160, 320, 480, 640};
 uint32_t CameraResY[4] = {120, 240, 272, 480};
-uint32_t CameraResIndex = 3;
+uint32_t CameraResIndex = 0;
 
 //extern LTDC_HandleTypeDef hlcd_ltdc;
 //extern DSI_HandleTypeDef hlcd_dsi;
@@ -112,15 +112,39 @@ static void SystemClock_Config(void);
 //static void CPU_CACHE_Enable(void);
 //static void MPU_Config(void);
 //static void LCD_MspInit(void);
+static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
+static void MX_SDMMC1_SD_Init(void);
+static void MX_I2C2_Init(void);
+static void MX_FMC_Init(void);
 void Error_Handler(void);
 
 /* from L4 */
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c2;
+DMA_HandleTypeDef hdma_i2c2_rx;
+DMA_HandleTypeDef hdma_i2c2_tx;
+
+SD_HandleTypeDef hsd1;
+DMA_HandleTypeDef hdma_sdmmc1_rx;
+DMA_HandleTypeDef hdma_sdmmc1_tx;
+
+SPI_HandleTypeDef hspi1;
+
+UART_HandleTypeDef huart2;
+
+SRAM_HandleTypeDef hsram1;
+
+
+SRAM_HandleTypeDef hsram1;
+
+
 extern DCMI_HandleTypeDef hDcmiHandler;
 DMA2D_HandleTypeDef Dma2dHandle;
 uint16_t pBuffer[ST7789H2_LCD_PIXEL_WIDTH * ST7789H2_LCD_PIXEL_WIDTH];
 HAL_StatusTypeDef hal_status = HAL_OK;
+
 /* Private function prototypes -----------------------------------------------*/
 static void IO_Init(void);
 static void LCD_ImagePreparation(uint16_t x0, uint16_t y0, uint16_t xSize, uint16_t ySize);
@@ -139,37 +163,35 @@ static void TransferComplete(DMA2D_HandleTypeDef* Dma2dHandle);
   */
 int main(void)
 {
-  HAL_StatusTypeDef hal_status = HAL_OK;
+//  HAL_StatusTypeDef hal_status = HAL_OK;
 
   /* STM32L4xx HAL library initialization:
-       - Configure the Flash prefetch
-       - Systick timer is configured by default as source of time base, but user
-         can eventually implement his proper time base source (a general purpose
-         timer for example or other time source), keeping in mind that Time base
-         duration should be kept 1ms since PPP_TIMEOUT_VALUEs are defined and
-         handled in milliseconds basis.
-       - Set NVIC Group Priority to 4
-       - Low Level Initialization
-     */
+   - Configure the Flash prefetch
+   - Systick timer is configured by default as source of time base, but user
+	 can eventually implement his proper time base source (a general purpose
+	 timer for example or other time source), keeping in mind that Time base
+	 duration should be kept 1ms since PPP_TIMEOUT_VALUEs are defined and
+	 handled in milliseconds basis.
+   - Set NVIC Group Priority to 4
+   - Low Level Initialization
+ */
   HAL_Init();
 
   /* Configure the system clock to 80 MHz */
   SystemClock_Config();
 
+
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_SDMMC1_SD_Init();
+  MX_I2C2_Init();
+  MX_FMC_Init();
+
+
   /*##-2- Initialize the LCD #################################################*/
   /*##-1- LEDs initialization  #################################################*/
   BSP_LED_Init(LED2);
   BSP_LED_Init(LED1);
-
-  BSP_LED_On(LED2);
-  HAL_Delay(1000);
-  BSP_LED_On(LED1);
-  HAL_Delay(1000);
-
-  BSP_LED_Off(LED2);
-  HAL_Delay(1000);
-  BSP_LED_Off(LED1);
-  HAL_Delay(1000);
 
 
   /*##-2- LCD configuration  #################################################*/
@@ -201,8 +223,8 @@ int main(void)
      with words alignment, the last parameter of HAL_DCMI_Start_DMA is set to:
       (ST7789H2_LCD_PIXEL_WIDTH*ST7789H2_LCD_PIXEL_HEIGHT)/2, that is 240 * 240 / 2
    */
-  hal_status = HAL_DCMI_Start_DMA(&hDcmiHandler, DCMI_MODE_CONTINUOUS,  (uint32_t)pBuffer , (ST7789H2_LCD_PIXEL_WIDTH*ST7789H2_LCD_PIXEL_HEIGHT)/2 );
-  OnError_Handler(hal_status != HAL_OK);
+//  hal_status = HAL_DCMI_Start_DMA(&hDcmiHandler, DCMI_MODE_CONTINUOUS,  (uint32_t)pBuffer , (ST7789H2_LCD_PIXEL_WIDTH*ST7789H2_LCD_PIXEL_HEIGHT)/2 );
+//  OnError_Handler(hal_status != HAL_OK);
 
   /* Initialize the Camera */
   if(CAMERA_5640_Init(0,CameraResolution[CameraResIndex],CAMERA_PF_RGB565) != BSP_ERROR_NONE)
@@ -210,12 +232,14 @@ int main(void)
     Error_Handler();
   }
 
-  HAL_Delay(1000);
-
   /* Start the Camera Capture */
-  if(BSP_CAMERA_Start(0,(uint8_t *)CAMERA_FRAME_BUFFER,CAMERA_MODE_CONTINUOUS)!=BSP_ERROR_NONE)
+  if(BSP_CAMERA_Start(0,(uint8_t *)CAMERA_FRAME_BUFFER,CAMERA_MODE_CONTINUOUS)!= BSP_ERROR_NONE)
   {
-    while(1);
+    Error_Handler();
+  }
+
+  while (1) {
+	// OK?!
   }
 }
 
@@ -424,40 +448,218 @@ static void TransferError(DMA2D_HandleTypeDef *hdma2d)
   */
 void SystemClock_Config(void)
 {
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /* MSI is enabled after System reset, activate PLL with MSI as source */
+  /** Configure the main internal regulator output voltage
+  */
+  if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
+  {
+	Error_Handler();
+  }
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
+  RCC_OscInitStruct.MSICalibrationValue = 0;
   RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
-  RCC_OscInitStruct.MSICalibrationValue = RCC_MSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
-  RCC_OscInitStruct.PLL.PLLM = 1;
-  RCC_OscInitStruct.PLL.PLLN = 40;
-  RCC_OscInitStruct.PLL.PLLR = 2;
-  RCC_OscInitStruct.PLL.PLLP = 7;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
-  if(HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    /* Initialization Error */
-    while(1);
+	Error_Handler();
   }
-
-  /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2
-     clocks dividers */
-  RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+							  |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_MSI;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-  if(HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
-    /* Initialization Error */
-    while(1);
+	Error_Handler();
   }
 }
+
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+
+  /*Configure GPIO pin : DCMI_PWR_EN */
+  GPIO_InitStruct.Pin = DCMI_PWR_EN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(DCMI_PWR_EN_GPIO_Port, &GPIO_InitStruct);
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+  /* DMA2_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel4_IRQn);
+  /* DMA2_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
+
+}
+
+
+/**
+  * @brief I2C2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C2_Init(void)
+{
+
+  /* USER CODE BEGIN I2C2_Init 0 */
+
+  /* USER CODE END I2C2_Init 0 */
+
+  /* USER CODE BEGIN I2C2_Init 1 */
+
+  /* USER CODE END I2C2_Init 1 */
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.Timing = 0x00000E14;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C2_Init 2 */
+
+  /* USER CODE END I2C2_Init 2 */
+
+}
+
+
+/**
+  * @brief SDMMC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SDMMC1_SD_Init(void)
+{
+
+  /* USER CODE BEGIN SDMMC1_Init 0 */
+
+  /* USER CODE END SDMMC1_Init 0 */
+
+  /* USER CODE BEGIN SDMMC1_Init 1 */
+
+  /* USER CODE END SDMMC1_Init 1 */
+  hsd1.Instance = SDMMC1;
+  hsd1.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
+  hsd1.Init.ClockBypass = SDMMC_CLOCK_BYPASS_DISABLE;
+  hsd1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
+  hsd1.Init.BusWide = SDMMC_BUS_WIDE_1B;
+  hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
+  hsd1.Init.ClockDiv = 0;
+  /* USER CODE BEGIN SDMMC1_Init 2 */
+
+  /* USER CODE END SDMMC1_Init 2 */
+
+}
+
+static void MX_FMC_Init(void)
+{
+
+  /* USER CODE BEGIN FMC_Init 0 */
+
+  /* USER CODE END FMC_Init 0 */
+
+  FMC_NORSRAM_TimingTypeDef Timing = {0};
+
+  /* USER CODE BEGIN FMC_Init 1 */
+
+  /* USER CODE END FMC_Init 1 */
+
+  /** Perform the SRAM1 memory initialization sequence
+  */
+  hsram1.Instance = FMC_NORSRAM_DEVICE;
+  hsram1.Extended = FMC_NORSRAM_EXTENDED_DEVICE;
+  /* hsram1.Init */
+  hsram1.Init.NSBank = FMC_NORSRAM_BANK1;
+  hsram1.Init.DataAddressMux = FMC_DATA_ADDRESS_MUX_DISABLE;
+  hsram1.Init.MemoryType = FMC_MEMORY_TYPE_SRAM;
+  hsram1.Init.MemoryDataWidth = FMC_NORSRAM_MEM_BUS_WIDTH_8;
+  hsram1.Init.BurstAccessMode = FMC_BURST_ACCESS_MODE_DISABLE;
+  hsram1.Init.WaitSignalPolarity = FMC_WAIT_SIGNAL_POLARITY_LOW;
+  hsram1.Init.WaitSignalActive = FMC_WAIT_TIMING_BEFORE_WS;
+  hsram1.Init.WriteOperation = FMC_WRITE_OPERATION_DISABLE;
+  hsram1.Init.WaitSignal = FMC_WAIT_SIGNAL_DISABLE;
+  hsram1.Init.ExtendedMode = FMC_EXTENDED_MODE_DISABLE;
+  hsram1.Init.AsynchronousWait = FMC_ASYNCHRONOUS_WAIT_ENABLE;
+  hsram1.Init.WriteBurst = FMC_WRITE_BURST_DISABLE;
+  hsram1.Init.ContinuousClock = FMC_CONTINUOUS_CLOCK_SYNC_ONLY;
+  hsram1.Init.WriteFifo = FMC_WRITE_FIFO_ENABLE;
+  hsram1.Init.PageSize = FMC_PAGE_SIZE_NONE;
+  /* Timing */
+  Timing.AddressSetupTime = 15;
+  Timing.AddressHoldTime = 15;
+  Timing.DataSetupTime = 255;
+  Timing.BusTurnAroundDuration = 15;
+  Timing.CLKDivision = 16;
+  Timing.DataLatency = 17;
+  Timing.AccessMode = FMC_ACCESS_MODE_A;
+  /* ExtTiming */
+
+  if (HAL_SRAM_Init(&hsram1, &Timing, NULL) != HAL_OK)
+  {
+    Error_Handler( );
+  }
+
+  /* USER CODE BEGIN FMC_Init 2 */
+
+  /* USER CODE END FMC_Init 2 */
+}
+
 
 #ifdef  USE_FULL_ASSERT
 /**

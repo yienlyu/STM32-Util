@@ -4,14 +4,8 @@
 #include "ov5640.h"
 #include "stm32l496g_discovery.h"
 #include "stm32l496g_discovery_io.h"
+#include "stm32_5640_bus.h"
 
-
-#define  OV9655_ID_2                           0x9657U
-
-//uint32_t CameraResolution[4] = {CAMERA_R160x120, CAMERA_R320x240, CAMERA_R480x272, CAMERA_R640x480};
-//uint32_t CameraResX[4] = {160, 320, 480, 640};
-//uint32_t CameraResY[4] = {120, 240, 272, 480};
-//uint32_t CameraResIndex = 3;
 
 // STM32H747I_DISCO_CAMERA_Private_Variables Private Variables
 static CAMERA_Drv_t *Camera_Drv = NULL;
@@ -64,17 +58,17 @@ static uint32_t CameraCurrentResolution;
 /* Camera module I2C HW address */
 static uint32_t CameraHwAddress;
 
-
+// replace BSP_CAMERA_Init
 int32_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelFormat) {
 	DCMI_HandleTypeDef *phdcmi;
-	uint8_t status = CAMERA_ERROR;
+//	uint8_t status = CAMERA_ERROR;
 
 	/* Get the DCMI handle structure */
 	phdcmi = &hcamera_dcmi;
 
 
 	/* Initialize the IO functionalities */
-	BSP_IO_Init();
+//	BSP_IO_Init();
 
 
 	/*** Configures the DCMI to interface with the camera module ***/
@@ -90,7 +84,7 @@ int32_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelF
 	phdcmi->Instance              = DCMI;
 
 	/* Camera initialization */
-	BSP_CAMERA_MspInit(&hcamera_dcmi, NULL);
+//	BSP_CAMERA_MspInit(&hcamera_dcmi, NULL);
 
 
 	int32_t ret = BSP_ERROR_NONE;
@@ -1182,19 +1176,20 @@ int32_t BSP_CAMERA_HwReset(uint32_t Instance)
     /* Enable GPIO clock */
     __HAL_RCC_GPIOH_CLK_ENABLE();
 
-    gpio_init_structure.Pin       = GPIO_PIN_14;
+    // DCMI_PWR_EN
+    gpio_init_structure.Pin       = GPIO_PIN_6;
     gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
     gpio_init_structure.Pull      = GPIO_NOPULL;
     gpio_init_structure.Speed     = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(GPIOH, &gpio_init_structure);
+    HAL_GPIO_Init(GPIOA, &gpio_init_structure);
 
     /* De-assert the camera POWER_DOWN pin (active high) */
-    HAL_GPIO_WritePin(GPIOH,GPIO_PIN_14, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
 
     HAL_Delay(100);     /* POWER_DOWN de-asserted during 100 ms */
 
     /* Assert the camera POWER_DOWN pin (active high) */
-    HAL_GPIO_WritePin(GPIOH,GPIO_PIN_14, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
     HAL_Delay(20);
   }
 
@@ -1364,50 +1359,45 @@ static void DCMI_MspInit(DCMI_HandleTypeDef *hdcmi)
 
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOG_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOI_CLK_ENABLE();
 
   /*** Configure the GPIO ***/
   /* Configure DCMI GPIO as alternate function */
-  gpio_init_structure.Pin       = GPIO_PIN_4 | GPIO_PIN_6;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
-  gpio_init_structure.Pull      = GPIO_PULLUP;
-  gpio_init_structure.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
-  gpio_init_structure.Alternate = GPIO_AF10_DCMI;
-  HAL_GPIO_Init(GPIOA, &gpio_init_structure);
 
-  gpio_init_structure.Pin       = GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9;
+  gpio_init_structure.Pin       = GPIO_PIN_14;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Pull      = GPIO_PULLUP;
   gpio_init_structure.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
   gpio_init_structure.Alternate = GPIO_AF10_DCMI;
   HAL_GPIO_Init(GPIOB, &gpio_init_structure);
 
-  gpio_init_structure.Pin       = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_9 | GPIO_PIN_11;
+  gpio_init_structure.Pin       = GPIO_PIN_5;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Pull      = GPIO_PULLUP;
   gpio_init_structure.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
   gpio_init_structure.Alternate = GPIO_AF10_DCMI;
-  HAL_GPIO_Init(GPIOC, &gpio_init_structure);
+  HAL_GPIO_Init(GPIOE, &gpio_init_structure);
 
-  gpio_init_structure.Pin       = GPIO_PIN_3;
+  gpio_init_structure.Pin       = GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_14;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Pull      = GPIO_PULLUP;
   gpio_init_structure.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
   gpio_init_structure.Alternate = GPIO_AF10_DCMI;
-  HAL_GPIO_Init(GPIOD, &gpio_init_structure);
+  HAL_GPIO_Init(GPIOH, &gpio_init_structure);
 
-  gpio_init_structure.Pin       = GPIO_PIN_10;
+  gpio_init_structure.Pin       = GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_7;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Pull      = GPIO_PULLUP;
   gpio_init_structure.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
   gpio_init_structure.Alternate = GPIO_AF10_DCMI;
-  HAL_GPIO_Init(GPIOG, &gpio_init_structure);
+  HAL_GPIO_Init(GPIOI, &gpio_init_structure);
 
   /*** Configure the DMA ***/
   /* Set the parameters to be configured */
-//  hdma_handler.Init.Request             = DMA_REQUEST_DCMI;
+  hdma_handler.Init.Request             = DMA_REQUEST_0;  // error?
+
   hdma_handler.Init.Direction           = DMA_PERIPH_TO_MEMORY;
   hdma_handler.Init.PeriphInc           = DMA_PINC_DISABLE;
   hdma_handler.Init.MemInc              = DMA_MINC_ENABLE;
@@ -1415,11 +1405,13 @@ static void DCMI_MspInit(DCMI_HandleTypeDef *hdcmi)
   hdma_handler.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
   hdma_handler.Init.Mode                = DMA_CIRCULAR;
   hdma_handler.Init.Priority            = DMA_PRIORITY_HIGH;
+
+  // error?
 //  hdma_handler.Init.FIFOMode            = DMA_FIFOMODE_ENABLE;
 //  hdma_handler.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
 //  hdma_handler.Init.MemBurst            = DMA_MBURST_SINGLE;
 //  hdma_handler.Init.PeriphBurst         = DMA_PBURST_SINGLE;
-//  hdma_handler.Instance                 = DMA2_Stream3;
+//  hdma_handler.Instance                 = DMA2_Stream3_IRQn;
 
   /* Associate the initialized DMA handle to the DCMI handle */
   __HAL_LINKDMA(hdcmi, DMA_Handle, hdma_handler);
@@ -1664,44 +1656,44 @@ static int32_t OV9655_Probe(uint32_t Resolution, uint32_t PixelFormat)
 
   /* Configure the audio driver */
   IOCtx.Address     = CAMERA_OV9655_ADDRESS;
-//  IOCtx.Init        = BSP_I2C2_Init;
-//  IOCtx.DeInit      = BSP_I2C2_DeInit;
-//  IOCtx.ReadReg     = BSP_I2C2_ReadReg;
-//  IOCtx.WriteReg    = BSP_I2C2_WriteReg;
-//  IOCtx.GetTick     = BSP_GetTick;
+  IOCtx.Init        = BSP_I2C2_Init;
+  IOCtx.DeInit      = BSP_I2C2_DeInit;
+  IOCtx.ReadReg     = BSP_I2C2_ReadReg;
+  IOCtx.WriteReg    = BSP_I2C2_WriteReg;
+  IOCtx.GetTick     = BSP_GetTick;
 
-//  if(OV9655_RegisterBusIO (&OV9655Obj, &IOCtx) != OV9655_OK)
-//  {
-//    ret = BSP_ERROR_COMPONENT_FAILURE;
-//  }
-//  else if(OV9655_ReadID(&OV9655Obj, &CameraId) != OV9655_OK)
-//  {
-//    ret = BSP_ERROR_COMPONENT_FAILURE;
-//  }
-//  else
-//  {
-//    if((CameraId != OV9655_ID) && (CameraId != OV9655_ID_2))
-//    {
-//      ret = BSP_ERROR_UNKNOWN_COMPONENT;
-//    }
-//    else
-//    {
-//      Camera_Drv = (CAMERA_Drv_t *) &OV9655_CAMERA_Driver;
-//      Camera_CompObj = &OV9655Obj;
-//      if(Camera_Drv->Init(Camera_CompObj, Resolution, PixelFormat) != OV9655_OK)
-//      {
-//        ret = BSP_ERROR_COMPONENT_FAILURE;
-//      }
-//      else if(Camera_Drv->GetCapabilities(Camera_CompObj, &Camera_Cap) != OV9655_OK)
-//      {
-//        ret = BSP_ERROR_COMPONENT_FAILURE;
-//      }
-//      else
-//      {
-//        ret = BSP_ERROR_NONE;
-//      }
-//    }
-//  }
+  if(OV9655_RegisterBusIO (&OV9655Obj, &IOCtx) != OV9655_OK)
+  {
+    ret = BSP_ERROR_COMPONENT_FAILURE;
+  }
+  else if(OV9655_ReadID(&OV9655Obj, &CameraId) != OV9655_OK)
+  {
+    ret = BSP_ERROR_COMPONENT_FAILURE;
+  }
+  else
+  {
+    if((CameraId != OV9655_ID) && (CameraId != OV9655_ID_2))
+    {
+      ret = BSP_ERROR_UNKNOWN_COMPONENT;
+    }
+    else
+    {
+      Camera_Drv = (CAMERA_Drv_t *) &OV9655_CAMERA_Driver;
+      Camera_CompObj = &OV9655Obj;
+      if(Camera_Drv->Init(Camera_CompObj, Resolution, PixelFormat) != OV9655_OK)
+      {
+        ret = BSP_ERROR_COMPONENT_FAILURE;
+      }
+      else if(Camera_Drv->GetCapabilities(Camera_CompObj, &Camera_Cap) != OV9655_OK)
+      {
+        ret = BSP_ERROR_COMPONENT_FAILURE;
+      }
+      else
+      {
+        ret = BSP_ERROR_NONE;
+      }
+    }
+  }
 
   return ret;
 }
@@ -1720,11 +1712,11 @@ static int32_t OV5640_Probe(uint32_t Resolution, uint32_t PixelFormat)
 
   /* Configure the audio driver */
   IOCtx.Address     = CAMERA_OV5640_ADDRESS;
-//  IOCtx.Init        = BSP_I2C2_Init;
-//  IOCtx.DeInit      = BSP_I2C2_DeInit;
-//  IOCtx.ReadReg     = BSP_I2C2_ReadReg16;
-//  IOCtx.WriteReg    = BSP_I2C2_WriteReg16;
-//  IOCtx.GetTick     = BSP_GetTick;
+  IOCtx.Init        = BSP_I2C2_Init;
+  IOCtx.DeInit      = BSP_I2C2_DeInit;
+  IOCtx.ReadReg     = BSP_I2C2_ReadReg16;
+  IOCtx.WriteReg    = BSP_I2C2_WriteReg16;
+  IOCtx.GetTick     = BSP_GetTick;
 
   if(OV5640_RegisterBusIO (&OV5640Obj, &IOCtx) != OV5640_OK)
   {
@@ -1765,18 +1757,3 @@ static int32_t OV5640_Probe(uint32_t Resolution, uint32_t PixelFormat)
 #endif
 
 
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
