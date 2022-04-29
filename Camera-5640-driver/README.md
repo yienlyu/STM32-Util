@@ -4,5 +4,4 @@
 - Checked the `CAMERA_5640_Init()` function compare to both H7 and L4 drivers (hopefully!)
 - Haven't check `BSP_CANERA_Start()` yet
 - Also checked again the MFX pin `DCMI_PWR_EN`.
-![](https://i.imgur.com/rayQ6vr.png)
-
+![](https://i.imgur.com/JYimo6D.png)
