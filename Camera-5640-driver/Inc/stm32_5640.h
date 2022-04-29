@@ -178,7 +178,7 @@ extern CAMERA_Ctx_t        Camera_Ctx[];
 int32_t BSP_CAMERA_RegisterDefaultMspCallbacks (uint32_t Instance);
 int32_t BSP_CAMERA_RegisterMspCallbacks(uint32_t Instance, BSP_CAMERA_Cb_t *CallBacks);
 #endif /* (USE_HAL_DCMI_REGISTER_CALLBACKS == 1) */
-int32_t BSP_CAMERA_Start(uint32_t Instance, uint8_t *buff, uint32_t Mode);
+int32_t BSP_CAMERA_Start(uint32_t Instance, uint32_t buff, uint32_t Mode);
 //int32_t BSP_CAMERA_Stop(uint32_t Instance);
 //int32_t BSP_CAMERA_Suspend(uint32_t Instance);
 //int32_t BSP_CAMERA_Resume(uint32_t Instance);
@@ -227,11 +227,6 @@ int32_t BSP_CAMERA_HwReset(uint32_t Instance);
 
 void    BSP_CAMERA_IRQHandler(uint32_t Instance);
 void    BSP_CAMERA_DMA_IRQHandler(uint32_t Instance);
-
-/* These functions can be modified in case the current settings (e.g. DMA stream)
-   need to be changed for specific application needs */
-HAL_StatusTypeDef MX_DCMI_Init(DCMI_HandleTypeDef* hdcmi);
-
 /**
   * @}
   */
@@ -272,8 +267,11 @@ HAL_StatusTypeDef MX_DCMI_Init(DCMI_HandleTypeDef* hdcmi);
 #define BSP_ERROR_BUS_CRC_ERROR              -106
 #define BSP_ERROR_BUS_DMA_FAILURE            -107
 
-int32_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelFormat);
+uint8_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelFormat);
 static void DCMI_MspInit(DCMI_HandleTypeDef *hdcmi);
+
+HAL_StatusTypeDef NEW_HAL_DCMI_Start_DMA(DCMI_HandleTypeDef *hdcmi, uint32_t DCMI_Mode, uint32_t pData, uint32_t Length);
+HAL_StatusTypeDef HAL_DMA_Start_IT(DMA_HandleTypeDef *hdma, uint32_t SrcAddress, uint32_t DstAddress, uint32_t DataLength);
 
 /* H7 camera.h */
 typedef struct

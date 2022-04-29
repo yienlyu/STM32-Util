@@ -20,8 +20,9 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
-#include "stm32l4xx_it.h"
+#include "../Inc/stm32l4xx_it.h"
+
+#include "../Inc/main.h"
 
 /** @addtogroup STM32L4xx_HAL_Examples
   * @{

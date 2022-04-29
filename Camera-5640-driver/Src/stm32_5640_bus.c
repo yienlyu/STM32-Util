@@ -1,4 +1,4 @@
-#include "stm32_5640_bus.h"
+#include "../Inc/stm32_5640_bus.h"
 //#include "stm32l496g_discovery_errno.h"
 
 /** @defgroup STM32H747I_DISCO_BUS_Private_Constants Private Constants

@@ -19,7 +19,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "../Inc/main.h"
 
 /** @addtogroup STM32L4xx_HAL_Examples
   * @{
@@ -72,56 +72,15 @@ static __IO int32_t dma2d_pending_copy = 0;
 int32_t LCD_GetXSize(uint32_t Instance, uint32_t *XSize);
 int32_t LCD_GetYSize(uint32_t Instance, uint32_t *YSize);
 
-//const LCD_UTILS_Drv_t LCD_UTIL_Driver =
-//{
-//  BSP_LCD_DrawBitmap,
-//  BSP_LCD_FillRGBRect,
-//  BSP_LCD_DrawHLine,
-//  BSP_LCD_DrawVLine,
-//  BSP_LCD_FillRect,
-//  BSP_LCD_ReadPixel,
-//  BSP_LCD_WritePixel,
-//  LCD_GetXSize,
-//  LCD_GetYSize,
-//  BSP_LCD_SetActiveLayer,
-//  BSP_LCD_GetPixelFormat
-//};
-//
-//DSI_CmdCfgTypeDef CmdCfg;
-//DSI_LPCmdTypeDef LPCmd;
-//DSI_PLLInitTypeDef dsiPllInit;
-//static RCC_PeriphCLKInitTypeDef  PeriphClkInitStruct;
-
 uint8_t pColLeft[]    = {0x00, 0x00, 0x01, 0x8F}; /*   0 -> 399 */
 uint8_t pColRight[]   = {0x01, 0x90, 0x03, 0x1F}; /* 400 -> 799 */
 uint8_t pPage[]       = {0x00, 0x00, 0x01, 0xDF}; /*   0 -> 479 */
 uint8_t pScanCol[]    = {0x02, 0x15};             /* Scan @ 533 */
 
-/* Private function prototypes -----------------------------------------------*/
-static void SystemClock_Config(void);
-//static void DMA2D_ConvertFrameToARGB8888(void *pSrc, void *pDst, uint32_t xsize, uint32_t ysize);
-//static void DMA2D_Config(uint16_t xsize, uint32_t ysize);
-//static void DMA2D_TransferCompleteCallback(DMA2D_HandleTypeDef *hdma2d);
-//static int32_t DSI_IO_Write(uint16_t ChannelNbr, uint16_t Reg, uint8_t *pData, uint16_t Size);
-//static int32_t DSI_IO_Read(uint16_t ChannelNbr, uint16_t Reg, uint8_t *pData, uint16_t Size);
-//static uint8_t LCD_Init(void);
-//static void LCD_LayertInit(uint16_t LayerIndex, uint32_t Address);
-//static void LTDC_Init(void);
-//static void Display_StartRefresh(void);
-//static void Display_WaitRefresh(void);
-//static void CPU_CACHE_Enable(void);
-//static void MPU_Config(void);
-//static void LCD_MspInit(void);
-static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
-static void MX_SDMMC1_SD_Init(void);
-static void MX_I2C2_Init(void);
-static void MX_FMC_Init(void);
-void Error_Handler(void);
+DCMI_HandleTypeDef hdcmi;
 
-/* from L4 */
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
+DMA2D_HandleTypeDef hdma2d;
+
 I2C_HandleTypeDef hi2c2;
 DMA_HandleTypeDef hdma_i2c2_rx;
 DMA_HandleTypeDef hdma_i2c2_tx;
@@ -131,19 +90,39 @@ DMA_HandleTypeDef hdma_sdmmc1_rx;
 DMA_HandleTypeDef hdma_sdmmc1_tx;
 
 SPI_HandleTypeDef hspi1;
-
 UART_HandleTypeDef huart2;
-
 SRAM_HandleTypeDef hsram1;
-
-
-SRAM_HandleTypeDef hsram1;
-
 
 extern DCMI_HandleTypeDef hDcmiHandler;
 DMA2D_HandleTypeDef Dma2dHandle;
 uint16_t pBuffer[ST7789H2_LCD_PIXEL_WIDTH * ST7789H2_LCD_PIXEL_WIDTH];
 HAL_StatusTypeDef hal_status = HAL_OK;
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_DCMI_Init(void);
+static void MX_GPIO_Init(void);
+static void MX_I2C2_Init(void);
+static void MX_DMA_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_SPI1_Init(void);
+static void MX_FMC_Init(void);
+static void MX_DMA2D_Init(void);
+static void MX_SDMMC1_SD_Init(void);
+void Error_Handler(void);
+
+/* from L4 */
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+
+
+
+typedef enum {
+  APPLICATION_IDLE = 0,
+  APPLICATION_RUNNING,
+  APPLICATION_SD_UNPLUGGED,
+} FS_FileOperationsTypeDef;
+
+FS_FileOperationsTypeDef Appli_state = APPLICATION_IDLE;
 
 /* Private function prototypes -----------------------------------------------*/
 static void IO_Init(void);
@@ -180,12 +159,14 @@ int main(void)
   /* Configure the system clock to 80 MHz */
   SystemClock_Config();
 
-  IO_Init();
-
-//  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_SDMMC1_SD_Init();
+  MX_GPIO_Init();
   MX_I2C2_Init();
+  MX_DMA_Init();
+  MX_USART2_UART_Init();
+  MX_SPI1_Init();
+  MX_DCMI_Init();
+  MX_DMA2D_Init();
+  MX_SDMMC1_SD_Init();
   MX_FMC_Init();
 
 
@@ -193,11 +174,9 @@ int main(void)
   /*##-1- LEDs initialization  #################################################*/
   BSP_LED_Init(LED2);
   BSP_LED_Init(LED1);
-
-
   /*##-2- LCD configuration  #################################################*/
   /* I/O initialization, required before LCD initialization */
-
+  IO_Init();
   /* LCD initialization */
   BSP_LCD_Init();
 
@@ -207,25 +186,7 @@ int main(void)
 
   /*##-3- Camera Initialization ############################*/
   /* Initialize the Camera in QVGA mode */
-//  BSP_CAMERA_Init(CAMERA_R320x240);
-  /* Wait 1s to let auto-loops in the camera module converge and lead to correct exposure */
-//  HAL_Delay(1000);
-//
-//  CAMERA_5640_Init(0,CameraResolution[CameraResIndex],CAMERA_PF_RGB565);
-//  HAL_Delay(1000);
 
-  /*##-4- Camera Continuous capture start in QVGA resolution ############################*/
-  /* Disable unwanted HSYNC (IT_LINE)/VSYNC interrupts */
-  __HAL_DCMI_DISABLE_IT(&hDcmiHandler, DCMI_IT_LINE | DCMI_IT_VSYNC);
-
-  /* LCD size is 240 x 240 and format is RGB565 i.e. 16 bpp or 2 bytes/pixel.
-     The LCD frame size is therefore 240 * 240 half-words of (240*240)/2 32-bit long words .
-     Since the DMA associated to DCMI IP is configured in  BSP_CAMERA_MspInit() of stm32l496g_discovery_camera.c file
-     with words alignment, the last parameter of HAL_DCMI_Start_DMA is set to:
-      (ST7789H2_LCD_PIXEL_WIDTH*ST7789H2_LCD_PIXEL_HEIGHT)/2, that is 240 * 240 / 2
-   */
-//  hal_status = HAL_DCMI_Start_DMA(&hDcmiHandler, DCMI_MODE_CONTINUOUS,  (uint32_t)pBuffer , (ST7789H2_LCD_PIXEL_WIDTH*ST7789H2_LCD_PIXEL_HEIGHT)/2 );
-//  OnError_Handler(hal_status != HAL_OK);
 
   /* Initialize the Camera */
   if(CAMERA_5640_Init(0,CameraResolution[CameraResIndex],CAMERA_PF_RGB565) != BSP_ERROR_NONE)
@@ -233,14 +194,20 @@ int main(void)
     Error_Handler();
   }
 
+  /* Disable unwanted HSYNC (IT_LINE)/VSYNC interrupts */
+  __HAL_DCMI_DISABLE_IT(&hDcmiHandler, DCMI_IT_LINE | DCMI_IT_VSYNC);
+
   /* Start the Camera Capture */
-  if(BSP_CAMERA_Start(0,(uint8_t *)CAMERA_FRAME_BUFFER,CAMERA_MODE_CONTINUOUS)!= BSP_ERROR_NONE)
+  if(BSP_CAMERA_Start(0,(uint32_t)pBuffer,CAMERA_MODE_CONTINUOUS)!= BSP_ERROR_NONE)
   {
     Error_Handler();
   }
 
   while (1) {
-	// OK?!
+	hal_status = LCD_Write((uint32_t) (&pBuffer), (uint32_t)&(LCD_ADDR->REG), ST7789H2_LCD_PIXEL_WIDTH * ST7789H2_LCD_PIXEL_HEIGHT);
+    OnError_Handler(hal_status != HAL_OK);
+	HAL_UART_Transmit(&huart2, (uint32_t)pBuffer, sizeof(pBuffer), ST7789H2_LCD_PIXEL_WIDTH * ST7789H2_LCD_PIXEL_WIDTH);
+	HAL_Delay(1000);
   }
 }
 
@@ -456,7 +423,7 @@ void SystemClock_Config(void)
   */
   if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
   {
-	Error_Handler();
+    Error_Handler();
   }
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -465,81 +432,97 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
   RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
+  RCC_OscInitStruct.PLL.PLLM = 1;
+  RCC_OscInitStruct.PLL.PLLN = 40;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
+  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-	Error_Handler();
+    Error_Handler();
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-							  |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_MSI;
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
   {
-	Error_Handler();
+    Error_Handler();
   }
 }
 
-static void MX_GPIO_Init(void)
+static void MX_DCMI_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOF_CLK_ENABLE();
-  __HAL_RCC_GPIOE_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
+  /* USER CODE BEGIN DCMI_Init 0 */
 
-  /*Configure GPIO pin : DCMI_PWR_EN */
-  GPIO_InitStruct.Pin = DCMI_PWR_EN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(DCMI_PWR_EN_GPIO_Port, &GPIO_InitStruct);
+  /* USER CODE END DCMI_Init 0 */
 
-//  HAL_GPIO_WritePin(GPIOH, GPIO_PIN_6, GPIO_PIN_SET);
-//
-//  HAL_Delay(100);     /* POWER_DOWN de-asserted during 100 ms */
-//
-//  /* Assert the camera POWER_DOWN pin (active high) */
-//  HAL_GPIO_WritePin(GPIOH, GPIO_PIN_6, GPIO_PIN_RESET);
-//  HAL_Delay(20);
+  /* USER CODE BEGIN DCMI_Init 1 */
+
+  /* USER CODE END DCMI_Init 1 */
+  hdcmi.Instance = DCMI;
+  hdcmi.Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
+  hdcmi.Init.PCKPolarity = DCMI_PCKPOLARITY_FALLING;
+  hdcmi.Init.VSPolarity = DCMI_VSPOLARITY_LOW;
+  hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_LOW;
+  hdcmi.Init.CaptureRate = DCMI_CR_ALL_FRAME;
+  hdcmi.Init.ExtendedDataMode = DCMI_EXTEND_DATA_14B;
+  hdcmi.Init.JPEGMode = DCMI_JPEG_DISABLE;
+  hdcmi.Init.ByteSelectMode = DCMI_BSM_ALL;
+  hdcmi.Init.ByteSelectStart = DCMI_OEBS_ODD;
+  hdcmi.Init.LineSelectMode = DCMI_LSM_ALL;
+  hdcmi.Init.LineSelectStart = DCMI_OELS_ODD;
+  if (HAL_DCMI_Init(&hdcmi) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN DCMI_Init 2 */
+
+  /* USER CODE END DCMI_Init 2 */
 
 }
 
-/**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
+static void MX_DMA2D_Init(void)
 {
 
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
-  __HAL_RCC_DMA1_CLK_ENABLE();
+  /* USER CODE BEGIN DMA2D_Init 0 */
 
-  /* DMA interrupt init */
-  /* DMA1_Channel4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
-  /* DMA1_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
-  /* DMA2_Channel4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel4_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel4_IRQn);
-  /* DMA2_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
+  /* USER CODE END DMA2D_Init 0 */
+
+  /* USER CODE BEGIN DMA2D_Init 1 */
+
+  /* USER CODE END DMA2D_Init 1 */
+  hdma2d.Instance = DMA2D;
+  hdma2d.Init.Mode = DMA2D_M2M;
+  hdma2d.Init.ColorMode = DMA2D_OUTPUT_ARGB8888;
+  hdma2d.Init.OutputOffset = 0;
+  hdma2d.LayerCfg[1].InputOffset = 0;
+  hdma2d.LayerCfg[1].InputColorMode = DMA2D_INPUT_ARGB8888;
+  hdma2d.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
+  hdma2d.LayerCfg[1].InputAlpha = 0;
+  hdma2d.LayerCfg[1].AlphaInverted = DMA2D_REGULAR_ALPHA;
+  hdma2d.LayerCfg[1].RedBlueSwap = DMA2D_RB_REGULAR;
+  if (HAL_DMA2D_Init(&hdma2d) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_DMA2D_ConfigLayer(&hdma2d, 1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN DMA2D_Init 2 */
+
+  /* USER CODE END DMA2D_Init 2 */
 
 }
-
 
 /**
   * @brief I2C2 Initialization Function
@@ -557,7 +540,7 @@ static void MX_I2C2_Init(void)
 
   /* USER CODE END I2C2_Init 1 */
   hi2c2.Instance = I2C2;
-  hi2c2.Init.Timing = 0x00000E14;
+  hi2c2.Init.Timing = 0x10909CEC;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -588,6 +571,7 @@ static void MX_I2C2_Init(void)
 }
 
 
+
 /**
   * @brief SDMMC1 Initialization Function
   * @param None
@@ -610,9 +594,107 @@ static void MX_SDMMC1_SD_Init(void)
   hsd1.Init.BusWide = SDMMC_BUS_WIDE_1B;
   hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd1.Init.ClockDiv = 0;
+  if (HAL_SD_Init(&hsd1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_SD_ConfigWideBusOperation(&hsd1, SDMMC_BUS_WIDE_4B) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN SDMMC1_Init 2 */
 
   /* USER CODE END SDMMC1_Init 2 */
+
+}
+
+/**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 7;
+  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
 }
 
@@ -668,6 +750,34 @@ static void MX_FMC_Init(void)
 
   /* USER CODE END FMC_Init 2 */
 }
+
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOI_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pins : SD_DETECT_Pin DCMI_PWR_EN_Pin */
+  /*Configure GPIO pins : SD_DETECT_Pin DCMI_PWR_EN_Pin */
+  GPIO_InitStruct.Pin = SD_DETECT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = DCMI_PWR_EN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+}
+
+
 
 
 #ifdef  USE_FULL_ASSERT

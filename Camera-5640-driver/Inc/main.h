@@ -26,7 +26,8 @@
 #include "stm32l496g_discovery_lcd.h"
 #include "stm32l496g_discovery_io.h"
 #include "stm32l496g_discovery_camera.h"
-#include "stm32_5640.h"
+
+#include "../Inc/stm32_5640.h"
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
@@ -40,12 +41,14 @@ void Error_Handler(void);
 #define USART2_TX_Pin GPIO_PIN_2
 #define USART2_TX_GPIO_Port GPIOA
 
+#define SD_DETECT_Pin GPIO_PIN_13
+#define SD_DETECT_GPIO_Port GPIOC
 #define DCMI_PWR_EN_Pin GPIO_PIN_6
-#define DCMI_PWR_EN_GPIO_Port GPIOH
+#define DCMI_PWR_EN_GPIO_Port GPIOC
 
 #define LCD_FRAME_BUFFER                  0xD0000000 /* LCD Frame buffer of size 800x480 in ARGB8888 */
 
-#define CAMERA_FRAME_BUFFER               0xD0177000
+#define CAMERA_FRAME_BUFFER               0x68000000
 
 
 #define ARGB8888_BYTE_PER_PIXEL  4

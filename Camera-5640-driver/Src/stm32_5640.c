@@ -1,17 +1,22 @@
-#include "stm32_5640.h"
+#include "../Inc/stm32_5640.h"
+
 #include "stm32l496g_discovery_camera.h"
 #include "ov9655.h"
 #include "ov5640.h"
 #include "stm32l496g_discovery.h"
 #include "stm32l496g_discovery_io.h"
-#include "stm32_5640_bus.h"
 
+#include "../Inc/stm32_5640_bus.h"
+
+#define DCMI_PWR_EN_Pin GPIO_PIN_6
+#define DCMI_PWR_EN_GPIO_Port GPIOC
 
 // STM32H747I_DISCO_CAMERA_Private_Variables Private Variables
 static CAMERA_Drv_t *Camera_Drv = NULL;
 static CAMERA_Capabilities_t Camera_Cap;
 static uint32_t HSPolarity = DCMI_HSPOLARITY_LOW;
 static uint32_t CameraId;
+
 
 // STM32H747I_DISCO_CAMERA_Private_Variables Private Variables
 void                *Camera_CompObj = NULL;
@@ -59,18 +64,30 @@ static uint32_t CameraCurrentResolution;
 static uint32_t CameraHwAddress;
 
 // replace BSP_CAMERA_Init
-int32_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelFormat) {
+uint8_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelFormat) {
 	DCMI_HandleTypeDef *phdcmi;
-//	uint8_t status = CAMERA_ERROR;
+	uint8_t status = CAMERA_ERROR;
+	int32_t ret = BSP_ERROR_NONE;
 
 	/* Get the DCMI handle structure */
 	phdcmi = &hcamera_dcmi;
 
 
 	/* Initialize the IO functionalities */
-//	BSP_IO_Init();
+	BSP_IO_Init();
+//	BSP_IO_ConfigPin(CAMERA_PWR_EN_PIN, IO_MODE_OUTPUT);
 
+	/* Camera initialization */
+	// Initializes the DCMI MSP -> ok
+	// DCMI_MspInit in H7
+	BSP_CAMERA_MspInit(&hcamera_dcmi, NULL);
 
+	/* Initialize the camera driver structure */
+	// H7
+//    if(MX_DCMI_Init(&hcamera_dcmi) != HAL_OK)
+//    {
+//      ret = BSP_ERROR_PERIPH_FAILURE;
+//    }
 	/*** Configures the DCMI to interface with the camera module ***/
 	/* DCMI configuration */
 	phdcmi->Init.CaptureRate      = DCMI_CR_ALL_FRAME;
@@ -83,135 +100,104 @@ int32_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelF
 	phdcmi->Init.LineSelectMode   = DCMI_LSM_ALL;
 	phdcmi->Instance              = DCMI;
 
-	/* Camera initialization */
-//	BSP_CAMERA_MspInit(&hcamera_dcmi, NULL);
 
+    if(BSP_CAMERA_HwReset(0) != BSP_ERROR_NONE)
+    {
+      ret = BSP_ERROR_BUS_FAILURE;
+    }
+    else
+    {
+#if (USE_CAMERA_SENSOR_OV9655 == 1)
+      ret= OV9655_Probe(Resolution, PixelFormat);
+#endif
+#if (USE_CAMERA_SENSOR_OV5640 == 1)
+      if(ret != BSP_ERROR_NONE)
+      {
+        ret = OV5640_Probe(Resolution, PixelFormat);
+      }
+#endif
+      if(ret != BSP_ERROR_NONE)
+      {
+        ret = BSP_ERROR_UNKNOWN_COMPONENT;
+      }
+      else
+      {
+        if((CameraId == OV9655_ID) || (CameraId == OV9655_ID_2))
+        {
+          if(Resolution == CAMERA_R480x272)
+          {
+            if(HAL_DCMI_ConfigCROP(&hcamera_dcmi,           /* Crop in the middle of the VGA picture */
+                                   (CAMERA_VGA_RES_X - CAMERA_480x272_RES_X)/2,
+                                   (CAMERA_VGA_RES_Y - CAMERA_480x272_RES_Y)/2,
+                                   (CAMERA_480x272_RES_X * 2) - 1,
+                                   CAMERA_480x272_RES_Y - 1) != HAL_OK)
+            {
+              ret = BSP_ERROR_PERIPH_FAILURE;
+            }
+            else
+            {
+              if(HAL_DCMI_EnableCROP(&hcamera_dcmi) != HAL_OK)
+              {
+                ret = BSP_ERROR_PERIPH_FAILURE;
+              }
+            }
+          }
+        }
+        else
+        {
+          HSPolarity = DCMI_HSPOLARITY_HIGH;
+          /* Initialize the camera driver structure */
+//          if(MX_DCMI_Init(&hcamera_dcmi) != HAL_OK)
+//          {
+//            ret = BSP_ERROR_PERIPH_FAILURE;
+//          }
+        }
 
-	int32_t ret = BSP_ERROR_NONE;
+        if(ret == BSP_ERROR_NONE)
+        {
+          if(BSP_CAMERA_HwReset(0) != BSP_ERROR_NONE)
+          {
+            ret = BSP_ERROR_BUS_FAILURE;
+          }
+        }
 
-	  if(Instance >= CAMERA_INSTANCES_NBR)
-	  {
-		ret = BSP_ERROR_WRONG_PARAM;
-	  }
-	  else
-	  {
-		/* DCMI Initialization */
-	#if (USE_HAL_DCMI_REGISTER_CALLBACKS == 1)
-		/* Register the DCMI MSP Callbacks */
-		if(Camera_Ctx[Instance].IsMspCallbacksValid == 0U)
-		{
-		  if(BSP_CAMERA_RegisterDefaultMspCallbacks(Instance) != BSP_ERROR_NONE)
-		  {
-			return BSP_ERROR_MSP_FAILURE;
-		  }
-		}
-	#else
-		/* DCMI Initialization */
-		DCMI_MspInit(&hcamera_dcmi);
-	#endif
-		/* Initialize the camera driver structure */
-		if(MX_DCMI_Init(&hcamera_dcmi) != HAL_OK)
-		{
-		  ret = BSP_ERROR_PERIPH_FAILURE;
-		}
-		else if(BSP_CAMERA_HwReset(0) != BSP_ERROR_NONE)
-		{
-		  ret = BSP_ERROR_BUS_FAILURE;
-		}
-		else
-		{
-	#if (USE_CAMERA_SENSOR_OV9655 == 1)
-		  ret= OV9655_Probe(Resolution, PixelFormat);
-	#endif
-	#if (USE_CAMERA_SENSOR_OV5640 == 1)
-		  if(ret != BSP_ERROR_NONE)
-		  {
-			ret = OV5640_Probe(Resolution, PixelFormat);
-		  }
-	#endif
-		  if(ret != BSP_ERROR_NONE)
-		  {
-			ret = BSP_ERROR_UNKNOWN_COMPONENT;
-		  }
-		  else
-		  {
-			if((CameraId == OV9655_ID) || (CameraId == OV9655_ID_2))
-			{
-			  if(Resolution == CAMERA_R480x272)
-			  {
-				if(HAL_DCMI_ConfigCROP(&hcamera_dcmi,           /* Crop in the middle of the VGA picture */
-									   (CAMERA_VGA_RES_X - CAMERA_480x272_RES_X)/2,
-									   (CAMERA_VGA_RES_Y - CAMERA_480x272_RES_Y)/2,
-									   (CAMERA_480x272_RES_X * 2) - 1,
-									   CAMERA_480x272_RES_Y - 1) != HAL_OK)
-				{
-				  ret = BSP_ERROR_PERIPH_FAILURE;
-				}
-				else
-				{
-				  if(HAL_DCMI_EnableCROP(&hcamera_dcmi) != HAL_OK)
-				  {
-					ret = BSP_ERROR_PERIPH_FAILURE;
-				  }
-				}
-			  }
-			}
-			else
-			{
-			  HSPolarity = DCMI_HSPOLARITY_HIGH;
-			  /* Initialize the camera driver structure */
-			  if(MX_DCMI_Init(&hcamera_dcmi) != HAL_OK)
-			  {
-				ret = BSP_ERROR_PERIPH_FAILURE;
-			  }
-			}
+        if(ret == BSP_ERROR_NONE)
+        {
+          Camera_Ctx[Instance].CameraId  = CameraId;
+#if (USE_HAL_DCMI_REGISTER_CALLBACKS == 1)
+          /* Register DCMI LineEvent, FrameEvent and Error callbacks */
+          if(HAL_DCMI_RegisterCallback(&hcamera_dcmi, HAL_DCMI_LINE_EVENT_CB_ID, DCMI_LineEventCallback) != HAL_OK)
+          {
+            ret = BSP_ERROR_PERIPH_FAILURE;
+          }
+          else if(HAL_DCMI_RegisterCallback(&hcamera_dcmi, HAL_DCMI_FRAME_EVENT_CB_ID, DCMI_FrameEventCallback) != HAL_OK)
+          {
+            ret = BSP_ERROR_PERIPH_FAILURE;
+          }
+          else if(HAL_DCMI_RegisterCallback(&hcamera_dcmi, HAL_DCMI_VSYNC_EVENT_CB_ID, DCMI_VsyncEventCallback) != HAL_OK)
+          {
+            ret = BSP_ERROR_PERIPH_FAILURE;
+          }
+          else if(HAL_DCMI_RegisterCallback(&hcamera_dcmi, HAL_DCMI_ERROR_CB_ID, DCMI_ErrorCallback) != HAL_OK)
+          {
+            ret = BSP_ERROR_PERIPH_FAILURE;
+          }
+          else
+          {
+            ret = BSP_ERROR_NONE;
+          }
+#endif /* (USE_HAL_DCMI_REGISTER_CALLBACKS == 1) */
+        }
+        if(ret == BSP_ERROR_NONE)
+        {
+          Camera_Ctx[Instance].Resolution  = Resolution;
+          Camera_Ctx[Instance].PixelFormat = PixelFormat;
+        }
+      }
+    }
 
-			if(ret == BSP_ERROR_NONE)
-			{
-			  if(BSP_CAMERA_HwReset(0) != BSP_ERROR_NONE)
-			  {
-				ret = BSP_ERROR_BUS_FAILURE;
-			  }
-			}
-
-			if(ret == BSP_ERROR_NONE)
-			{
-			  Camera_Ctx[Instance].CameraId  = CameraId;
-	#if (USE_HAL_DCMI_REGISTER_CALLBACKS == 1)
-			  /* Register DCMI LineEvent, FrameEvent and Error callbacks */
-			  if(HAL_DCMI_RegisterCallback(&hcamera_dcmi, HAL_DCMI_LINE_EVENT_CB_ID, DCMI_LineEventCallback) != HAL_OK)
-			  {
-				ret = BSP_ERROR_PERIPH_FAILURE;
-			  }
-			  else if(HAL_DCMI_RegisterCallback(&hcamera_dcmi, HAL_DCMI_FRAME_EVENT_CB_ID, DCMI_FrameEventCallback) != HAL_OK)
-			  {
-				ret = BSP_ERROR_PERIPH_FAILURE;
-			  }
-			  else if(HAL_DCMI_RegisterCallback(&hcamera_dcmi, HAL_DCMI_VSYNC_EVENT_CB_ID, DCMI_VsyncEventCallback) != HAL_OK)
-			  {
-				ret = BSP_ERROR_PERIPH_FAILURE;
-			  }
-			  else if(HAL_DCMI_RegisterCallback(&hcamera_dcmi, HAL_DCMI_ERROR_CB_ID, DCMI_ErrorCallback) != HAL_OK)
-			  {
-				ret = BSP_ERROR_PERIPH_FAILURE;
-			  }
-			  else
-			  {
-				ret = BSP_ERROR_NONE;
-			  }
-	#endif /* (USE_HAL_DCMI_REGISTER_CALLBACKS == 1) */
-			}
-			if(ret == BSP_ERROR_NONE)
-			{
-			  Camera_Ctx[Instance].Resolution  = Resolution;
-			  Camera_Ctx[Instance].PixelFormat = PixelFormat;
-			}
-		  }
-		}
-	  }
-
-	  /* BSP status */
-	  return ret;
+  /* BSP status */
+  return ret;
 
 }
 //
@@ -271,30 +257,6 @@ int32_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelF
 //  return ret;
 //}
 
-/**
-  * @brief  Initializes the DCMI peripheral
-  * @param  hdcmi  DCMI handle
-  * @note   Being __weak it can be overwritten by the application
-  * @retval HAL status
-  */
-__weak HAL_StatusTypeDef MX_DCMI_Init(DCMI_HandleTypeDef* hdcmi)
-{
-  /*** Configures the DCMI to interface with the camera module ***/
-  /* DCMI configuration */
-  hdcmi->Instance              = DCMI;
-  hdcmi->Init.CaptureRate      = DCMI_CR_ALL_FRAME;
-  hdcmi->Init.HSPolarity       = HSPolarity;
-  hdcmi->Init.SynchroMode      = DCMI_SYNCHRO_HARDWARE;
-  hdcmi->Init.VSPolarity       = DCMI_VSPOLARITY_HIGH;
-  hdcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-  hdcmi->Init.PCKPolarity      = DCMI_PCKPOLARITY_RISING;
-
-  if(HAL_DCMI_Init(hdcmi) != HAL_OK)
-  {
-    return HAL_ERROR;
-  }
-  return HAL_OK;
-}
 
 #if (USE_HAL_DCMI_REGISTER_CALLBACKS == 1)
 /**
@@ -376,7 +338,7 @@ int32_t BSP_CAMERA_RegisterMspCallbacks(uint32_t Instance, BSP_CAMERA_Cb_t *Call
   * @param  Mode CAMERA_MODE_CONTINUOUS or CAMERA_MODE_SNAPSHOT
   * @retval BSP status
   */
-int32_t BSP_CAMERA_Start(uint32_t Instance, uint8_t *pBff, uint32_t Mode)
+int32_t BSP_CAMERA_Start(uint32_t Instance, uint32_t pBff, uint32_t Mode)
 {
   int32_t ret;
 
@@ -396,6 +358,8 @@ int32_t BSP_CAMERA_Start(uint32_t Instance, uint8_t *pBff, uint32_t Mode)
   /* Return BSP status */
   return ret;
 }
+
+
 
 /**
   * @brief  Stop the CAMERA capture
@@ -1163,6 +1127,7 @@ int32_t BSP_CAMERA_DisableNightMode(uint32_t Instance)
   */
 int32_t BSP_CAMERA_HwReset(uint32_t Instance)
 {
+
   int32_t ret = BSP_ERROR_NONE;
   GPIO_InitTypeDef gpio_init_structure;
 
@@ -1174,25 +1139,22 @@ int32_t BSP_CAMERA_HwReset(uint32_t Instance)
   {
     /* Init DCMI PWR_ENABLE Pin */
     /* Enable GPIO clock */
-    __HAL_RCC_GPIOH_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
 
-    // DCMI_PWR_EN
-    gpio_init_structure.Pin       = GPIO_PIN_6;
-    gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
-    gpio_init_structure.Pull      = GPIO_NOPULL;
-    gpio_init_structure.Speed     = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(GPIOH, &gpio_init_structure);
+    gpio_init_structure.Pin = DCMI_PWR_EN_Pin;
+    gpio_init_structure.Mode = GPIO_MODE_OUTPUT_PP;
+    gpio_init_structure.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOC, &gpio_init_structure);
 
     /* De-assert the camera POWER_DOWN pin (active high) */
-    HAL_GPIO_WritePin(GPIOH, GPIO_PIN_6, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOC,DCMI_PWR_EN_Pin, GPIO_PIN_SET);
 
     HAL_Delay(100);     /* POWER_DOWN de-asserted during 100 ms */
 
     /* Assert the camera POWER_DOWN pin (active high) */
-    HAL_GPIO_WritePin(GPIOH, GPIO_PIN_6, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC,DCMI_PWR_EN_Pin, GPIO_PIN_RESET);
     HAL_Delay(20);
   }
-
   return ret;
 }
 
@@ -1364,6 +1326,10 @@ static void DCMI_MspInit(DCMI_HandleTypeDef *hdcmi)
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOI_CLK_ENABLE();
 
+  HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_SYSCLK, RCC_MCODIV_4);
+  __HAL_RCC_HSI48_ENABLE();
+  HAL_Delay(10); // HSI48 should start in 10ms
+
   /*** Configure the GPIO ***/
   /* Configure DCMI GPIO as alternate function */
 
@@ -1398,7 +1364,8 @@ static void DCMI_MspInit(DCMI_HandleTypeDef *hdcmi)
 
   /*** Configure the DMA ***/
   /* Set the parameters to be configured */
-  hdma_handler.Init.Request             = DMA_REQUEST_0;  // error?
+  hdma_handler.Instance                 = BSP_CAMERA_DMA_INSTANCE;
+  hdma_handler.Init.Request             = DMA_REQUEST_0;
 
   hdma_handler.Init.Direction           = DMA_PERIPH_TO_MEMORY;
   hdma_handler.Init.PeriphInc           = DMA_PINC_DISABLE;
@@ -1428,7 +1395,7 @@ static void DCMI_MspInit(DCMI_HandleTypeDef *hdcmi)
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
 
   /* Configure the DMA stream */
-  (void)HAL_DMA_Init(hdcmi->DMA_Handle);
+  HAL_DMA_Init(hdcmi->DMA_Handle);
 }
 
 /**
@@ -1482,20 +1449,20 @@ static void DCMI_MspDeInit(DCMI_HandleTypeDef *hdcmi)
 //  /* Prevent unused argument(s) compilation warning */
 //  UNUSED(hdcmi);
 //
-//  BSP_CAMERA_LineEventCallback(0);
+//  BSP_CAMERA_LineEventCallback();
 //}
-
-/**
-  * @brief  Frame event callback
-  * @param  hdcmi pointer to the DCMI handle
-  * @retval None
-  */
+//
+///**
+//  * @brief  Frame event callback
+//  * @param  hdcmi pointer to the DCMI handle
+//  * @retval None
+//  */
 //void HAL_DCMI_FrameEventCallback(DCMI_HandleTypeDef *hdcmi)
 //{
 //  /* Prevent unused argument(s) compilation warning */
 //  UNUSED(hdcmi);
 //
-//  BSP_CAMERA_FrameEventCallback(0);
+//  BSP_CAMERA_FrameEventCallback();
 //}
 
 /**

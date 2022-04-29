@@ -91,6 +91,6 @@ HAL_StatusTypeDef MX_I2C2_Init(I2C_HandleTypeDef *phi2c, uint32_t timing);
 #define BSP_ERROR_BUS_CRC_ERROR              -106
 #define BSP_ERROR_BUS_DMA_FAILURE            -107
 
-int32_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelFormat);
+uint8_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelFormat);
 static void DCMI_MspInit(DCMI_HandleTypeDef *hdcmi);
 
