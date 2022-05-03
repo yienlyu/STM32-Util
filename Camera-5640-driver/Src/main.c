@@ -165,7 +165,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_SPI1_Init();
   MX_DCMI_Init();
-  MX_DMA2D_Init();
+//  MX_DMA2D_Init();
   MX_SDMMC1_SD_Init();
   MX_FMC_Init();
 
@@ -204,9 +204,10 @@ int main(void)
   }
 
   while (1) {
+	BSP_CAMERA_FrameEventCallback();
 	hal_status = LCD_Write((uint32_t) (&pBuffer), (uint32_t)&(LCD_ADDR->REG), ST7789H2_LCD_PIXEL_WIDTH * ST7789H2_LCD_PIXEL_HEIGHT);
-    OnError_Handler(hal_status != HAL_OK);
-	HAL_UART_Transmit(&huart2, (uint32_t)pBuffer, sizeof(pBuffer), ST7789H2_LCD_PIXEL_WIDTH * ST7789H2_LCD_PIXEL_WIDTH);
+//    OnError_Handler(hal_status != HAL_OK);
+//	HAL_UART_Transmit(&huart2, (uint32_t)pBuffer, sizeof(pBuffer), ST7789H2_LCD_PIXEL_WIDTH * ST7789H2_LCD_PIXEL_WIDTH);
 	HAL_Delay(1000);
   }
 }

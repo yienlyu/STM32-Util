@@ -569,9 +569,10 @@ HAL_StatusTypeDef HAL_DCMI_Start_DMA(DCMI_HandleTypeDef* hdcmi, uint32_t DCMI_Mo
     }
   }
 
+//  /* Enable Capture */
+//  SET_BIT(hdcmi->Instance->CR, DCMI_CR_CAPTURE);
   /* Enable Capture */
-  SET_BIT(hdcmi->Instance->CR, DCMI_CR_CAPTURE);
-
+  hdcmi->Instance->CR |= DCMI_CR_CAPTURE;
   /* Release Lock */
   __HAL_UNLOCK(hdcmi);
 

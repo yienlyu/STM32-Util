@@ -146,6 +146,7 @@ uint8_t CAMERA_5640_Init(uint32_t Instance, uint32_t Resolution, uint32_t PixelF
         else
         {
           HSPolarity = DCMI_HSPOLARITY_HIGH;
+          // already initialized
           /* Initialize the camera driver structure */
 //          if(MX_DCMI_Init(&hcamera_dcmi) != HAL_OK)
 //          {
