@@ -5,5 +5,5 @@
 - Checked the `CAMERA_5640_Init()` function compare to both H7 and L4 drivers and has nothing wrongly called right now (hopefully)
 - Also checked again the MFX pin `DCMI_PWR_EN` in `MX_GPIO_Init()`, taking reference of the `SD_detect_Pin`.
 ![](https://i.imgur.com/JYimo6D.png)
-- Checked all the PINs initialization, and used `BSP_CAMERA_FrameEventCallback()` to check the LCD write data through DMA2D, but still no picture captured. (So is there any problem with DMA2D? However the data transfer works well with `DMA2D_Config()`. On the other hand, it doesn't work if only runs `MX_DMA2D_Init()`, which is still a mystery to me.)
+- Checked all the PINs initialization, and used `BSP_CAMERA_FrameEventCallback()` to check the LCD write data through DMA2D, but still no correct picture captured. (So is there any problem with DMA2D? However the data transfer works well with `DMA2D_Config()`. On the other hand, it doesn't work if only runs `MX_DMA2D_Init()`, which is still a mystery to me.)
 
